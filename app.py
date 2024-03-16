@@ -23,9 +23,12 @@ except Exception as e:
 
 db = client.get_database('neel')
 records = db.test_data
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
+
+st.title("Number of Users by Country")
 # Query MongoDB for user data
-cursor1 = records.find({}, {'_id': 0, 'country': 1, 'converted': 1, 'device': 1})
+cursor1 = records.find({}, {'_id': 0, 'country': 1, 'converted': 1, 'device': 1,})
 
 # Convert cursor to DataFrame
 df = pd.DataFrame(list(cursor1))
@@ -34,17 +37,16 @@ df = pd.DataFrame(list(cursor1))
 df['converted'] = df['converted'].map({True: 'Yes', False: 'No'})
 
 # Filter based on converted and device
-converted_values = st.multiselect("Select converted values:", options=['Yes', 'No'], default=['Yes', 'No'])
-device_values = st.multiselect("Select device values:", options=['laptop', 'mobile'], default=['laptop', 'mobile'])
+converted_values = st.multiselect("Converted:", options=['Yes', 'No'], default=['Yes', 'No'])
+device_values = st.multiselect("Device:", options=['laptop', 'mobile'], default=['laptop', 'mobile'])
 
 filtered_df = df[(df['converted'].isin(converted_values)) & (df['device'].isin(device_values))]
 
 # Print total number of users
-st.write(f"Total number of users: {len(filtered_df)}")
+st.info(f"Total number of users: {len(filtered_df)}")
 
 # Group by country and count the number of users
 country_counts = filtered_df.groupby('country').size().reset_index(name='count')
-
 # Read world shapefile
 world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
 
@@ -54,8 +56,6 @@ world = world.merge(country_counts, left_on='name', right_on='country', how='lef
 # Set aspect ratio to make the countries closer together
 world_aspect_ratio = 2  # Adjust as needed
 
-# Streamlit app
-st.title("Number of Users by Country")
 
 # Check if either converted or device values are selected
 if converted_values or device_values:
@@ -63,9 +63,7 @@ if converted_values or device_values:
     if not filtered_df.empty:
         # Plot map
         fig, ax = plt.subplots(figsize=(10, 6))
-        
-        # Plot countries where converted is Yes in green and converted is No in red
-        colors = {'Yes': 'green', 'No': 'red'}
+    
         world.plot(column='count', cmap="RdYlGn", linewidth=0.8, ax=ax, edgecolor='0.8', legend=True)
         
         # Set aspect ratio
@@ -82,6 +80,17 @@ if converted_values or device_values:
         st.write("No data available for selected criteria.")
 else:
     st.write("Please select at least one option for converted or device to display the map.")
+
+# Calculate the number of users in each country
+c_counts = filtered_df['country'].value_counts()
+# Create a pie chart
+fig, ax = plt.subplots()
+ax.pie(c_counts, labels=c_counts.index, autopct='%1.1f%%', startangle=90)
+ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+ax.set_title("Number of Users by Country")
+
+# Display the pie chart
+st.pyplot(fig)
 
 # Query MongoDB for user data
 cursor2 = records.find({}, {'_id': 0, 
@@ -125,7 +134,7 @@ model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']
 # Train the model
 model.fit(X_scaled, y, epochs=10, batch_size=32)
 # Streamlit app
-st.title("Conversion Prediction")
+st.title("Conversion Prediction based on Strategy page")
 
 # Sliders for feature values
 with st.sidebar:
@@ -153,18 +162,133 @@ prediction = model.predict(input_data)
 st.subheader("Predicted Probability of Conversion")
 st.info(f"{prediction[0][0]:.2f}")
 
+# Plot the graph
+st.title("User Activity by Hour of the Day")
 # Query MongoDB for user data
-cursor3 = records.find({}, {'_id': 0, 'converted': 1})
+cursor3 = records.find({}, {'_id': 0, 'lg_time': 1, 'country': 1, 'device': 1})
 
-# Convert cursor3 to DataFrame
+# Convert cursor to DataFrame
 df2 = pd.DataFrame(list(cursor3))
 
-# Count converted users
-converted_counts = df2['converted'].value_counts()
+# Convert lg_time to datetime
+df2['lg_time'] = pd.to_datetime(df2['lg_time'])
 
-# Plot bar chart
-plt.bar(converted_counts.index.astype(str), converted_counts)
-plt.xlabel('Converted')
-plt.ylabel('Number of Users')
-plt.title('Converted Users')
+# Extract the hour part from the datetime
+df2['hour'] = df2['lg_time'].dt.hour
+
+# Filter DataFrame based on location (country) and device
+selected_countries = st.multiselect('Select countries:', options=["India", "United States of America", "United Kingdom", "Canada", "Australia", "France", "Germany", "China", "Japan", "Brazil"], default=["India", "United States of America", "United Kingdom", "Canada", "Australia", "France", "Germany", "China", "Japan", "Brazil"])
+selected_devices = st.multiselect('Select devices:', options=["laptop", "mobile"], default=["laptop", "mobile"])
+
+filtered_df2 = df2[(df2['country'].isin(selected_countries)) & (df2['device'].isin(selected_devices))]
+
+# If either filter is not selected, display a blank plot
+if not selected_countries or not selected_devices:
+    st.write("Please select at least one option for both countries and devices to display the plot.")
+else:
+    # Group data by hour and count the number of users for each country
+    hourly_counts = filtered_df2.groupby(['hour', 'country']).size().unstack(fill_value=0)
+
+    plt.figure(figsize=(10, 6))
+
+    colors = plt.cm.tab10.colors[:len(selected_countries)]  # Get colors from default colormap
+
+    # Stack the bars for each country
+    bottom = None
+    for country in selected_countries:
+        counts = hourly_counts[country]
+        plt.bar(counts.index, counts.values, bottom=bottom, label=country, color=colors[selected_countries.index(country)])
+        if bottom is None:
+            bottom = counts.values
+        else:
+            bottom += counts.values
+
+    plt.xlabel('Hour of the Day')
+    plt.ylabel('Number of Users')
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.tight_layout()
+
+    # Display the plot
+    st.pyplot()
+
+# Define column names and their corresponding filter labels
+columns = {
+    "si_google_new": "Signed in with Google",
+    "si_acc_new": "Created account",
+    "si_name_inp": "Name input",
+    "si_mail_inp": "Mail input",
+    "si_pass_inp": "Password input",
+    "si_eye_clk": "Eye click",
+    "rem_me": "Remember me"
+}
+
+# Query MongoDB for user data
+cursor4 = records.find({}, {'_id': 0, 'si_google_new':1, 'si_acc_new':1, 'si_name_inp':1, 'si_mail_inp':1, 'si_pass_inp':1, 'si_eye_clk':1, 'rem_me':1})
+
+st.title("Signup Activity")
+
+# Convert cursor to DataFrame
+df3 = pd.DataFrame(list(cursor4))
+# Map converted values to Yes and No
+df3['si_google_new'] = df3['si_google_new'].map({True: 'Yes', False: 'No'})
+df3['si_acc_new'] = df3['si_acc_new'].map({True: 'Yes', False: 'No'})
+df3['rem_me'] = df3['rem_me'].map({True: 'Yes', False: 'No'})
+# Filter DataFrame based on location (country) and device
+google = st.multiselect('Continued with Google:', options=["Yes", "No"], default = ["Yes"])
+signin = st.multiselect('Created Account:', options=["Yes", "No"], default = ["No"])
+rem_me = st.multiselect('Remember me', options=["Yes", "No"], default=["Yes"])
+
+filtered_df3 = df3[(df3['si_acc_new'].isin(signin)) & (df3['si_google_new'].isin(google)) & (df3['rem_me'].isin(rem_me))]
+
+# Calculate the sum of specific columns and the count of rows for the remaining columns
+sum_columns = filtered_df3[['si_name_inp', 'si_mail_inp', 'si_pass_inp', 'si_eye_clk']].sum()
+
+row_counts = filtered_df3[['si_google_new', 'si_acc_new', 'rem_me']].shape[0]
+st.info(f"Number of users: {row_counts} ")
+# Calculate the average based on row_counts
+avg = sum_columns / row_counts
+# Custom row names
+row_names = ["Name", "Email", "Password", "Eye-icon"]
+# Plot the sums and row counts in a bar chart
+plt.figure(figsize=(10, 6))
+
+# Plot the sums of specific columns
+sum_columns.plot(kind='bar', color='skyblue')
+
+plt.title("Clicks per Button/Input field")
+plt.ylabel("Count")
+plt.legend()
+plt.xticks([0, 1, 2, 3], ["Name", "Email", "Password", "Eye Icon"])
+plt.xticks(rotation=45)
+plt.tight_layout()
+
+# Show the plot
+st.pyplot()
+# Access each row of avg and display rounded values with custom row names
+for name, value in zip(row_names, avg):
+    st.info(f"Average clicks for {name}: {value:.2f}")
+
+st.title("PDF vs Slides Downloads")
+# Query MongoDB for user data
+cursor5 = records.find({}, {'_id': 0, 'st_site_gtm_pdf': 1, 'st_site_gtm_ppt': 1, 'converted': 1})
+
+# Convert cursor to DataFrame
+df4 = pd.DataFrame(list(cursor5))
+
+# Filter based on converted field
+converted_values = st.multiselect("Converted:", options=[True, False], default=[True, False])
+filtered_df4 = df4[df4['converted'].isin(converted_values)]
+
+# Calculate sum of 'st_site_gtm_pdf' and 'st_site_gtm_ppt'
+sum_pdf = filtered_df4['st_site_gtm_pdf'].sum()
+sum_ppt = filtered_df4['st_site_gtm_ppt'].sum()
+
+# Create pie chart
+plt.figure(figsize=(2,2))
+plt.pie([sum_pdf, sum_ppt], labels=['PDF', 'Slides'], autopct='%1.1f%%')
+plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
+plt.show()
+
+# Display pie chart
 st.pyplot()
