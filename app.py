@@ -292,3 +292,69 @@ plt.show()
 
 # Display pie chart
 st.pyplot()
+
+# Query MongoDB for user data
+cursor6 = records.find({}, {'_id': 0, 'st_site_gtm_int_clk': 1, 'st_site_gtm_tgm_clk': 1,
+                           'st_site_gtm_val_clk': 1, 'st_site_gtm_pri_clk': 1,
+                           'st_site_gtm_dis_clk': 1, 'st_site_gtm_mar_clk': 1,
+                           'st_site_gtm_sal_clk': 1, 'st_site_gtm_par_clk': 1,
+                           'st_site_gtm_kpi_clk': 1, 'st_site_gtm_sav': 1})
+
+# Function to preprocess the target variable
+def preprocess_target(value):
+    return 1 if value > 0 else 0
+
+# Convert cursor to DataFrame
+df5 = pd.DataFrame(list(cursor6))
+
+# Preprocess the target variable
+df5['st_site_gtm_sav'] = df5['st_site_gtm_sav'].apply(preprocess_target)
+
+# Extract the feature vector and target variable
+X1 = df5[['st_site_gtm_int_clk', 'st_site_gtm_tgm_clk', 'st_site_gtm_val_clk', 
+        'st_site_gtm_pri_clk', 'st_site_gtm_dis_clk', 'st_site_gtm_mar_clk', 
+        'st_site_gtm_sal_clk', 'st_site_gtm_par_clk', 'st_site_gtm_kpi_clk']]
+y1 = df5['st_site_gtm_sav']
+
+# Standardize features
+scaler1 = StandardScaler()
+X_scaled1 = scaler1.fit_transform(X1)
+
+model1 = Sequential([
+    Dense(64, activation='relu', input_shape=(9,)),
+    Dense(128, activation='relu'),
+    Dense(64, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+
+# Compile the model
+model1.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train the model on the whole dataset
+model1.fit(X_scaled1, y1, epochs=10, batch_size=32)
+
+# Streamlit app
+st.title("Conversion Prediction based on Strategy page")
+
+# Sliders for feature values
+with st.sidebar:
+    st.subheader("GTM modules")
+    introduction = st.slider("Introduction", min_value=0, max_value=5, value=2)
+    target_market = st.slider("Target Market", min_value=0, max_value=5, value=2)
+    value_proposition = st.slider("Value Proposition", min_value=0, max_value=5, value=2)
+    pricing_strategy = st.slider("Pricing Strategy", min_value=0, max_value=5, value=2)
+    distribution_channels = st.slider("Distribution Channels", min_value=0, max_value=5, value=2)
+    marketing_plan = st.slider("Marketing Plan", min_value=0, max_value=5, value=2)
+    sales_strategy = st.slider("Sales Strategy", min_value=0, max_value=5, value=2)
+    partnerships = st.slider("Partnerships", min_value=0, max_value=5, value=2)
+    kpis = st.slider("Key Performance Indicators (KPIs)", min_value=0, max_value=5, value=2)
+
+
+# Predict conversion probability
+input_data1 = np.array([[introduction, target_market, value_proposition, pricing_strategy, distribution_channels, marketing_plan, sales_strategy, partnerships, kpis]])
+input_data_scaled1 = scaler1.transform(input_data1)
+prediction1 = model1.predict(input_data1)
+
+# Display predicted probability
+st.subheader("Predicted Probability of Saving GTM strategy")
+st.info(f"{prediction1[0][0]:.2f}")
