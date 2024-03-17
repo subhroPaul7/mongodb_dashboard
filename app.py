@@ -357,4 +357,4 @@ prediction1 = model1.predict(input_data1)
 
 # Display predicted probability
 st.subheader("Predicted Probability of Saving GTM strategy")
-
+st.info(f"{prediction1[0][0]:.2f}")
