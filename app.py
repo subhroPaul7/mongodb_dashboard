@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from pymongo import MongoClient
 import numpy as np
 from scipy.cluster import hierarchy
@@ -11,8 +10,6 @@ from tensorflow.keras.layers import Dense
 from sklearn.preprocessing import StandardScaler
 from pymongo.mongo_client import MongoClient
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import RFECV
 from itertools import combinations
 import itertools
 
