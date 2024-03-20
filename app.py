@@ -96,6 +96,46 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 # # Display the pie chart
 # st.pyplot(fig)
 
+st.title("Login Page")
+# Query MongoDB for data
+cursor7 = records.find({}, {'_id': 0, 'si_name_inp': 1, 'si_mail_inp': 1, 'si_pass_inp': 1, 'si_eye_clk': 1, 'lg_duration': 1})
+
+# Convert cursor to DataFrame
+df6 = pd.DataFrame(list(cursor7))
+# Segregate DataFrame based on lg_duration
+df_lg_duration_ge_40 = df6[df6['lg_duration'] >= 40]
+df_lg_duration_lt_40 = df6[df6['lg_duration'] < 40]
+
+# Calculate average lg_duration
+avg_lg_duration = round(df6['lg_duration'].mean(),2)
+# Calculate mean values for specified features where lg_duration >= 40
+mean_values_lg_duration_ge_40 = df_lg_duration_ge_40[['si_name_inp', 'si_mail_inp', 'si_pass_inp', 'si_eye_clk']].mean()
+
+# Calculate mean values for specified features where lg_duration < 40
+mean_values_lg_duration_lt_40 = df_lg_duration_lt_40[['si_name_inp', 'si_mail_inp', 'si_pass_inp', 'si_eye_clk']].mean()
+st.metric(label = "Average Login Session", value = f"{avg_lg_duration} secs")
+# Display mean values for specified features where lg_duration >= 40
+st.subheader("Mean Click values where login duration exceeds 40 secs")
+col7, col8, col9, col10 = st.columns(4)
+# Mapping for feature names
+feature_mapping = {
+    'si_name_inp': 'Name',
+    'si_mail_inp': 'Email',
+    'si_pass_inp': 'Password',
+    'si_eye_clk': 'Eye Icon'
+}
+
+# Calculate differences for each feature
+delta_si_name = round(mean_values_lg_duration_ge_40['si_name_inp'] - mean_values_lg_duration_lt_40['si_name_inp'], 2)
+delta_si_mail = round(mean_values_lg_duration_ge_40['si_mail_inp'] - mean_values_lg_duration_lt_40['si_mail_inp'], 2)
+delta_si_pass = round(mean_values_lg_duration_ge_40['si_pass_inp'] - mean_values_lg_duration_lt_40['si_pass_inp'], 2)
+delta_si_eye = round(mean_values_lg_duration_ge_40['si_eye_clk'] - mean_values_lg_duration_lt_40['si_eye_clk'], 2)
+
+col7.metric(label="Name", value=round(mean_values_lg_duration_ge_40['si_name_inp'], 2), delta=delta_si_name, delta_color="inverse")
+col8.metric(label="Email", value=round(mean_values_lg_duration_ge_40['si_mail_inp'], 2), delta=delta_si_mail, delta_color="inverse")
+col9.metric(label="Password", value=round(mean_values_lg_duration_ge_40['si_pass_inp'], 2), delta=delta_si_pass, delta_color="inverse")
+col10.metric(label="Eye Icon", value=round(mean_values_lg_duration_ge_40['si_eye_clk'], 2), delta=delta_si_eye, delta_color="inverse")
+
 # Query MongoDB for user data
 cursor2 = records.find({}, {'_id': 0, 
                             'banalysis': 1, 
@@ -328,6 +368,7 @@ for idx, (feature, effect_percentage) in enumerate(zip(top_neg_corr_features_st5
         col6.metric(label=f":red[{feature_mapping.get(feature, feature)}]", value=f"{effect_percentage:.2f}%")
 
 
+    
 # # Standardize features
 # scaler1 = StandardScaler()
 # X_scaled1 = scaler1.fit_transform(X1)
@@ -553,9 +594,13 @@ plt.tight_layout()
 
 # Show the plot
 st.pyplot()
-# Access each row of avg and display rounded values with custom row names
-for name, value in zip(row_names, avg):
-    st.info(f"Average clicks for {name}: {value:.2f}")
+
+st.subheader("Average Clicks for Features")
+col11, col12, col13, col14 = st.columns(4)
+col11.metric(label=row_names[0], value=f"{avg[0]:.2f}")
+col12.metric(label=row_names[1], value=f"{avg[1]:.2f}")
+col13.metric(label=row_names[2], value=f"{avg[2]:.2f}")
+col14.metric(label=row_names[3], value=f"{avg[3]:.2f}")
 
 st.title("PDF vs Slides Downloads")
 # Query MongoDB for user data
