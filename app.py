@@ -256,6 +256,26 @@ for idx, (feature, effect_percentage) in enumerate(zip(top_neg_corr_features.ind
     elif idx == 2:
         col6.metric(label=f":red[{feature_mapping.get(feature, feature)}]", value=f"{effect_percentage:.2f}%")
 
+
+# Query MongoDB to get the sums of each feature
+pipeline = [
+    {"$group": {"_id": None, "st_idea_clk_sum": {"$sum": "$st_idea_clk"},
+                "st_site_clk_sum": {"$sum": "$st_site_clk"},
+                "st_docs_clk_sum": {"$sum": "$st_docs_clk"}}}
+]
+result = list(records.aggregate(pipeline))
+
+sums = result[0]  # Extract the sums from the result
+st_idea_clk_sum = sums["st_idea_clk_sum"]
+st_site_clk_sum = sums["st_site_clk_sum"]
+st_docs_clk_sum = sums["st_docs_clk_sum"]
+
+# Create bar graph
+plt.figure(figsize=(10, 6))
+bars = plt.bar(["Idea", "Site", "Docs"], [st_idea_clk_sum, st_site_clk_sum, st_docs_clk_sum], color=['blue', 'orange', 'green'])
+plt.xlabel('Features')
+plt.ylabel('Total clicks')
+plt.title('Total Clicks for Each Feature')
 st.title("GTM Module")
 # Query MongoDB for user data
 cursor6 = records.find({}, {'_id': 0, 'st_site_gtm_int_clk': 1, 'st_site_gtm_tgm_clk': 1,
@@ -368,7 +388,48 @@ for idx, (feature, effect_percentage) in enumerate(zip(top_neg_corr_features_st5
         col6.metric(label=f":red[{feature_mapping.get(feature, feature)}]", value=f"{effect_percentage:.2f}%")
 
 
-    
+# Query MongoDB to fetch required data
+cursor8 = records.find({}, {'_id': 0, 'st_site_gtm_bck': 1, 'st_site_gtm_reg': 1, 'converted': 1})
+
+# Convert cursor to DataFrame
+df7 = pd.DataFrame(list(cursor8))
+
+# Define feature mapping
+feature_mapping = {
+    'st_site_gtm_bck': 'Back',
+    'st_site_gtm_reg': 'Regenerated',
+    'converted': 'Converted'
+}
+
+# Calculate correlation matrix
+correlation_matrix = df7[['st_site_gtm_bck', 'st_site_gtm_reg', 'converted']].corr() * 100  # Multiply by 100 for percentages
+
+# Map feature names
+correlation_matrix = correlation_matrix.rename(index=feature_mapping, columns=feature_mapping)
+
+# Display correlation matrix
+st.subheader("Correlation Matrix for Churn:")
+
+# Plot heatmap using Matplotlib
+plt.figure(figsize=(8, 6))
+heatmap = plt.imshow(correlation_matrix, cmap='viridis', interpolation='nearest')
+
+# Exclude numbers on the diagonal
+for i in range(len(correlation_matrix)):
+    correlation_matrix.iloc[i, i] = np.nan
+
+plt.colorbar(heatmap, label='Correlation (%)')
+plt.xticks(ticks=range(len(correlation_matrix)), labels=correlation_matrix.columns)
+plt.yticks(ticks=range(len(correlation_matrix)), labels=correlation_matrix.index)
+
+# Annotate each cell with the correlation value
+for i in range(len(correlation_matrix)):
+    for j in range(len(correlation_matrix.columns)):
+        if not np.isnan(correlation_matrix.iloc[i, j]):  # Exclude NaN values
+            plt.text(j, i, f"{correlation_matrix.iloc[i, j]:.2f}%", ha='center', va='center', color='white')
+
+plt.tight_layout()
+st.pyplot(plt)
 # # Standardize features
 # scaler1 = StandardScaler()
 # X_scaled1 = scaler1.fit_transform(X1)
