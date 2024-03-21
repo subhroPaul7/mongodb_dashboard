@@ -172,6 +172,32 @@ feature_mapping = {
 
 st.title("Strategy Page")
 
+# Query MongoDB to get the sums of each feature
+pipeline = [
+    {"$group": {"_id": None, "st_idea_clk_sum": {"$sum": "$st_idea_clk"},
+                "st_site_clk_sum": {"$sum": "$st_site_clk"},
+                "st_docs_clk_sum": {"$sum": "$st_docs_clk"}}}
+]
+result = list(records.aggregate(pipeline))
+
+sums = result[0]  # Extract the sums from the result
+st_idea_clk_sum = sums["st_idea_clk_sum"]
+st_site_clk_sum = sums["st_site_clk_sum"]
+st_docs_clk_sum = sums["st_docs_clk_sum"]
+
+# Create bar graph
+plt.figure(figsize=(10, 6))
+bars = plt.bar(["Idea", "Site", "Docs"], [st_idea_clk_sum, st_site_clk_sum, st_docs_clk_sum], color=['blue', 'orange', 'green'])
+plt.xlabel('Features')
+plt.ylabel('Total clicks')
+plt.title('Total Clicks for Each Feature')
+# Add labels on the bars
+for bar in bars:
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height}', ha='center', va='bottom')
+
+# Display bar graph in Streamlit app
+st.pyplot()
 # Convert cursor to DataFrame
 df1 = pd.DataFrame(list(cursor2))
 
@@ -257,25 +283,7 @@ for idx, (feature, effect_percentage) in enumerate(zip(top_neg_corr_features.ind
         col6.metric(label=f":red[{feature_mapping.get(feature, feature)}]", value=f"{effect_percentage:.2f}%")
 
 
-# Query MongoDB to get the sums of each feature
-pipeline = [
-    {"$group": {"_id": None, "st_idea_clk_sum": {"$sum": "$st_idea_clk"},
-                "st_site_clk_sum": {"$sum": "$st_site_clk"},
-                "st_docs_clk_sum": {"$sum": "$st_docs_clk"}}}
-]
-result = list(records.aggregate(pipeline))
 
-sums = result[0]  # Extract the sums from the result
-st_idea_clk_sum = sums["st_idea_clk_sum"]
-st_site_clk_sum = sums["st_site_clk_sum"]
-st_docs_clk_sum = sums["st_docs_clk_sum"]
-
-# Create bar graph
-plt.figure(figsize=(10, 6))
-bars = plt.bar(["Idea", "Site", "Docs"], [st_idea_clk_sum, st_site_clk_sum, st_docs_clk_sum], color=['blue', 'orange', 'green'])
-plt.xlabel('Features')
-plt.ylabel('Total clicks')
-plt.title('Total Clicks for Each Feature')
 st.title("GTM Module")
 # Query MongoDB for user data
 cursor6 = records.find({}, {'_id': 0, 'st_site_gtm_int_clk': 1, 'st_site_gtm_tgm_clk': 1,
